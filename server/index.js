@@ -10,6 +10,11 @@ const sessionStore = new SequelizeStore({db})
 const PORT = process.env.PORT || 8080
 const app = express()
 const socketio = require('socket.io')
+const {graphqlHTTP} = require('express-graphql')
+const schema = require('./schema')
+const resolvers = require('./resolvers')
+const fakeData = require('./fakeData')
+const {User} = require('./db/models')
 module.exports = app
 
 // This is a global Mocha hook, used for resource cleanup.
@@ -18,14 +23,6 @@ if (process.env.NODE_ENV === 'test') {
   after('close the session store', () => sessionStore.stopExpiringSessions())
 }
 
-/**
- * In your development environment, you can keep all of your
- * app's secret API keys in a file called `secrets.js`, in your project
- * root. This file is included in the .gitignore - it will NOT be tracked
- * or show up on Github. On your production server, you can add these
- * keys as environment variables, so that they can still be read by the
- * Node process on process.env
- */
 if (process.env.NODE_ENV !== 'production') require('../secrets')
 
 // passport registration
@@ -60,15 +57,43 @@ const createApp = () => {
       saveUninitialized: false
     })
   )
-  app.use(passport.initialize())
-  app.use(passport.session())
-
-  // auth and api routes
-  app.use('/auth', require('./auth'))
-  app.use('/api', require('./api'))
+  // app.use(passport.initialize())
+  // app.use(passport.session())
 
   // static file-serving middleware
   app.use(express.static(path.join(__dirname, '..', 'public')))
+
+  // don't need theeeese
+
+  // app.use('/auth', require('./auth'))
+  // app.use('/api', require('./api'))
+
+  //////////////////////////////////////////////////////////////
+
+  //attempt to retrieve fake data from fakeData file
+  // const root = {
+  //   user: ({id}) => fakeData.filter(user => user.id === id)[0]
+  // }
+
+  //resolver works together with postgres + sequelize, woO!
+  //now how to keep someone logged in...
+  const root = {
+    user: async ({id}) => {
+      const user = await User.findByPk(+id)
+      if (!user) throw new Error("user doesn't exist")
+      return user
+    }
+  }
+
+  //single endpoint
+  app.use(
+    '/graphql',
+    graphqlHTTP({
+      schema,
+      rootValue: root,
+      graphiql: true
+    })
+  )
 
   // any remaining requests with an extension (.js, .css, etc.) send 404
   app.use((req, res, next) => {

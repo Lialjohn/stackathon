@@ -3,9 +3,10 @@ import {connect} from 'react-redux'
 import PropTypes from 'prop-types'
 import {auth} from '../store'
 
-/**
- * COMPONENT
- */
+/* 
+how to handle auth with apollo/graphql??
+*/
+
 const AuthForm = props => {
   const {name, displayName, handleSubmit, error} = props
 
